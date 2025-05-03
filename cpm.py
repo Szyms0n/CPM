@@ -19,27 +19,28 @@ class CPMApp(QMainWindow):
 
         self.layout = QVBoxLayout(self.central_widget)
 
-        # Wprowadzanie danych
+        # Wprowadzanie danych (Nazwa → Poprzednicy → Czas)
         input_layout = QHBoxLayout()
         self.task_input = QLineEdit()
         self.task_input.setPlaceholderText("Nazwa zadania")
+        self.dependencies_input = QLineEdit()
+        self.dependencies_input.setPlaceholderText("Poprzednicy (np. ABC)")
         self.duration_input = QLineEdit()
         self.duration_input.setPlaceholderText("Czas trwania")
-        self.dependencies_input = QLineEdit()
-        self.dependencies_input.setPlaceholderText("Zależności (np. A,B)")
+
         self.add_button = QPushButton("Dodaj zadanie")
         self.add_button.clicked.connect(self.add_task)
 
         input_layout.addWidget(self.task_input)
-        input_layout.addWidget(self.duration_input)
         input_layout.addWidget(self.dependencies_input)
+        input_layout.addWidget(self.duration_input)
         input_layout.addWidget(self.add_button)
         self.layout.addLayout(input_layout)
 
         # Tabela zadań
         self.table = QTableWidget()
         self.table.setColumnCount(3)
-        self.table.setHorizontalHeaderLabels(["Zadanie", "Czas trwania", "Zależności"])
+        self.table.setHorizontalHeaderLabels(["Zadanie", "Poprzednicy", "Czas trwania"])
         self.table.itemChanged.connect(self.update_task_from_table)
         self.layout.addWidget(self.table)
 
@@ -52,27 +53,27 @@ class CPMApp(QMainWindow):
 
     def add_task(self):
         name = self.task_input.text().strip()
-        duration = self.duration_input.text().strip()
         dependencies = self.dependencies_input.text().strip()
+        duration = self.duration_input.text().strip()
 
         if not name or not duration.isdigit():
-            QMessageBox.warning(self, "Błąd", "Podaj poprawną nazwę (litery) i czas trwania (liczba całkowita).")
+            QMessageBox.warning(self, "Błąd", "Podaj poprawną nazwę i czas trwania (liczba całkowita).")
             return
 
-        self.tasks.append((name, int(duration), dependencies))
+        self.tasks.append((name, dependencies, int(duration)))
         self.update_table()
 
         self.task_input.clear()
-        self.duration_input.clear()
         self.dependencies_input.clear()
+        self.duration_input.clear()
 
     def update_table(self):
         self.table.blockSignals(True)
         self.table.setRowCount(len(self.tasks))
-        for row, (name, duration, dependencies) in enumerate(self.tasks):
+        for row, (name, dependencies, duration) in enumerate(self.tasks):
             self.table.setItem(row, 0, QTableWidgetItem(name))
-            self.table.setItem(row, 1, QTableWidgetItem(str(duration)))
-            self.table.setItem(row, 2, QTableWidgetItem(dependencies))
+            self.table.setItem(row, 1, QTableWidgetItem(dependencies))
+            self.table.setItem(row, 2, QTableWidgetItem(str(duration)))
         self.table.blockSignals(False)
 
     def update_task_from_table(self, item):
@@ -80,16 +81,16 @@ class CPMApp(QMainWindow):
         col = item.column()
         value = item.text().strip()
 
-        if col == 1 and not value.isdigit():
+        if col == 2 and not value.isdigit():
             QMessageBox.warning(self, "Błąd", "Czas trwania musi być liczbą całkowitą.")
             self.update_table()
             return
 
         name = self.table.item(row, 0).text().strip()
-        duration = int(self.table.item(row, 1).text().strip()) if self.table.item(row, 1) else 0
-        dependencies = self.table.item(row, 2).text().strip() if self.table.item(row, 2) else ""
+        dependencies = self.table.item(row, 1).text().strip() if self.table.item(row, 1) else ""
+        duration = int(self.table.item(row, 2).text().strip()) if self.table.item(row, 2) else 0
 
-        self.tasks[row] = (name, duration, dependencies)
+        self.tasks[row] = (name, dependencies, duration)
 
     def save_to_csv(self):
         if not self.tasks:
@@ -99,9 +100,9 @@ class CPMApp(QMainWindow):
         try:
             with open("zadania.csv", mode="w", newline='', encoding="utf-8") as file:
                 writer = csv.writer(file)
-                writer.writerow(["Zadanie", "Zależności", "Czas trwania"])
+                writer.writerow(["ac", "pr", "du"])
                 for task in self.tasks:
-                    writer.writerow([task[0], task[2], task[1]])
+                    writer.writerow([task[0], task[1], task[2]])
             QMessageBox.information(self, "Zapisano", "Dane zostały zapisane do pliku zadania.csv.")
         except Exception as e:
             QMessageBox.critical(self, "Błąd zapisu", f"Nie udało się zapisać pliku:\n{e}")
