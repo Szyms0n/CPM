@@ -1,12 +1,14 @@
 import sys
 import csv
+import subprocess
+from pathlib import Path
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout,
     QHBoxLayout, QLineEdit, QPushButton,
-    QTableWidget, QTableWidgetItem, QMessageBox
+    QTableWidget, QTableWidgetItem, QMessageBox, QDialog
 )
-from PyQt6.QtCore import Qt
-
+from PyQt6.QtCore import Qt, QUrl
+from PyQt6.QtWebEngineWidgets import QWebEngineView
 
 class CPMApp(QMainWindow):
     def __init__(self):
@@ -19,7 +21,7 @@ class CPMApp(QMainWindow):
 
         self.layout = QVBoxLayout(self.central_widget)
 
-        # Wprowadzanie danych (Nazwa → Poprzednicy → Czas)
+        # Wprowadzanie danych
         input_layout = QHBoxLayout()
         self.task_input = QLineEdit()
         self.task_input.setPlaceholderText("Nazwa zadania")
@@ -48,6 +50,16 @@ class CPMApp(QMainWindow):
         self.save_button = QPushButton("Zapisz do CSV")
         self.save_button.clicked.connect(self.save_to_csv)
         self.layout.addWidget(self.save_button)
+
+        # Przycisk generowania grafu
+        self.generate_button = QPushButton("Generuj model")
+        self.generate_button.clicked.connect(self.generate_model)
+        self.layout.addWidget(self.generate_button)
+
+        # Przycisk generowania wykresu gantta
+        self.gantt_button = QPushButton("Generuj wykres Gantta")
+        self.gantt_button.clicked.connect(self.generate_gantt)
+        self.layout.addWidget(self.gantt_button)
 
         self.tasks = []
 
@@ -107,6 +119,40 @@ class CPMApp(QMainWindow):
         except Exception as e:
             QMessageBox.critical(self, "Błąd zapisu", f"Nie udało się zapisać pliku:\n{e}")
 
+    def generate_model(self):
+        try:
+            self.save_to_csv()  # zapisz aktualne dane przed generowaniem
+            subprocess.run([sys.executable, "path.py"], check=True)
+
+        except Exception as e:
+            QMessageBox.critical(self, "Błąd generowania", f"Nie udało się uruchomić path.py:\n{e}")
+
+    def generate_gantt(self):
+        try:
+            self.save_to_csv()  # zapisz aktualne dane przed generowaniem
+            subprocess.run([sys.executable, "gantt.py"], check=True)
+            QMessageBox.information(self, "Wygenerowano", "Wykres Gantta zapisany jako gantt.png")
+        except Exception as e:
+            QMessageBox.critical(self, "Błąd generowania", f"Nie udało się uruchomić gantt.py:\n{e}")
+
+    def open_graph_viewer(self):
+        try:
+            path = QUrl.fromLocalFile(str(Path("graph.html").resolve()))
+
+            dialog = QDialog(self)
+            dialog.setWindowTitle("Model CPM – podgląd")
+            dialog.setGeometry(150, 150, 1000, 800)
+
+            layout = QVBoxLayout(dialog)
+            browser = QWebEngineView()
+            browser.load(path)
+
+            layout.addWidget(browser)
+            dialog.setLayout(layout)
+            dialog.exec()
+
+        except Exception as e:
+            QMessageBox.critical(self, "Błąd przeglądarki", f"Nie udało się załadować pliku:\n{e}")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
